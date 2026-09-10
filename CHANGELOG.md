@@ -14,6 +14,15 @@ that preserve the information (key renames, restructuring, added fields) ship in
 clients. (Releases up to and including 4.0.0 treated any response-shape change as
 breaking; this narrower contract applies from the next release onward.)
 
+## [Unreleased]
+
+### Added
+
+- **Fork-specific, not part of upstream:** 4 new `hevy_*` tools for read-only access to Hevy
+  (a separate strength-training logging app) — `hevy_get_recent_workouts`,
+  `hevy_get_workout_details`, `hevy_get_routines`, `hevy_get_exercise_templates`. Configured via
+  a new `HEVY_API_KEY` env var; not gated by `INTERVALS_ICU_DELETE_MODE`.
+
 ## [5.0.0] — 2026-08-31
 
 First major since the narrowed SemVer contract, and it drains the whole deferred-breaking-changes

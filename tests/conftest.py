@@ -50,6 +50,22 @@ def respx_mock():
 
 
 @pytest.fixture
+def mock_hevy_config():
+    """Provide a mock config with a Hevy API key for testing hevy_* tools."""
+    return ICUConfig(hevy_api_key="test_hevy_key_12345")
+
+
+@pytest.fixture
+def hevy_respx_mock():
+    """Provide a respx mock router for Hevy API requests."""
+    with respx.mock(
+        base_url="https://api.hevyapp.com/v1",
+        assert_all_called=False,
+    ) as respx_mock:
+        yield respx_mock
+
+
+@pytest.fixture
 def mock_athlete_data():
     """Sample athlete data for testing."""
     return {

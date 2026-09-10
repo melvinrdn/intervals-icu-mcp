@@ -4,7 +4,9 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-MCP (Model Context Protocol) server for Intervals.icu — provides up to 62 tools, 4 resources, and 9 prompts for accessing training data, wellness metrics, and performance analysis through Claude and other LLMs. The default `INTERVALS_ICU_DELETE_MODE=safe` registers 59 tools; `full` registers all 62, `none` registers 56.
+MCP (Model Context Protocol) server for Intervals.icu — provides up to 66 tools, 4 resources, and 9 prompts for accessing training data, wellness metrics, and performance analysis through Claude and other LLMs. The default `INTERVALS_ICU_DELETE_MODE=safe` registers 63 tools; `full` registers all 66, `none` registers 60.
+
+**This is Melvin's personal fork** of `hhopke/intervals-icu-mcp` (origin: `github.com/melvinrdn/intervals-icu-mcp`) and is free to diverge from upstream — e.g. the `hevy_*` tools below have no upstream equivalent. When following upstream-oriented process here (squash-merge conventions, CHANGELOG discipline, SemVer), use judgment about what still applies to a personal fork vs. what only made sense for the original project.
 
 - **Language**: Python 3.11+
 - **Framework**: FastMCP
@@ -35,6 +37,7 @@ make docker/run       # Run Docker container
 | Server | `server.py` | Entry point, registers tools/resources/prompts |
 | Middleware | `middleware.py` | Validates config, injects `ICUConfig` into context |
 | Client | `client.py` | Async HTTP client (Basic Auth, 30s timeout) |
+| Hevy Client | `hevy_client.py` | **Fork-specific.** Async HTTP client for the Hevy API (separate service, `api-key` header auth) |
 | Auth | `auth.py` | Loads credentials from `.env` |
 | Response | `response_builder.py` | Consistent JSON structure (data/analysis/metadata) |
 | Models | `models.py` | Pydantic models for API responses |
@@ -58,6 +61,7 @@ make docker/run       # Run Docker container
 11. `gear.py` — Manage gear and reminders
 12. `sport_settings.py` — FTP, FTHR, pace thresholds
 13. `custom_items.py` — Charts, custom fields, zones, etc.
+14. `hevy.py` — **Fork-specific.** Hevy strength-training logs, routines, exercise catalog (separate API key: `HEVY_API_KEY`; separate client in `hevy_client.py`, not `client.py`)
 
 ## Code Style
 

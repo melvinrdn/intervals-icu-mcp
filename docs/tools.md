@@ -1,16 +1,16 @@
 # Tool, Resource, and Prompt Reference
 
-Complete inventory of everything the Intervals.icu MCP server exposes: up to 62 tools across 11 categories, 4 MCP Resources, and 7 MCP Prompts.
+Complete inventory of everything this fork of the Intervals.icu MCP server exposes: up to 66 tools across 12 categories (62 for Intervals.icu, 4 fork-specific for Hevy), 4 MCP Resources, and 7 MCP Prompts.
 
 ## Delete Safety Mode
 
-Destructive tools are gated by the optional `INTERVALS_ICU_DELETE_MODE` env var. The gate sits **outside the model's reach** — tools that aren't registered cannot be invoked by any prompt or parameter.
+Destructive tools are gated by the optional `INTERVALS_ICU_DELETE_MODE` env var. The gate sits **outside the model's reach** — tools that aren't registered cannot be invoked by any prompt or parameter. This only gates the `icu_*` tools — the 4 `hevy_*` tools are read-only and always registered regardless of mode.
 
 | Mode | Registered tools | Events | Activities | Gear | Sport settings | Custom items |
 |---|---|---|---|---|---|---|
-| `safe` (default) | 59 | tomorrow or later | ✗ | ✓ | ✗ | ✗ |
-| `full` | 62 | any date | ✓ | ✓ | ✓ | ✓ |
-| `none` | 56 | ✗ | ✗ | ✗ | ✗ | ✗ |
+| `safe` (default) | 63 (59 + 4 Hevy) | tomorrow or later | ✗ | ✓ | ✗ | ✗ |
+| `full` | 66 (62 + 4 Hevy) | any date | ✓ | ✓ | ✓ | ✓ |
+| `none` | 60 (56 + 4 Hevy) | ✗ | ✗ | ✗ | ✗ | ✗ |
 
 In `safe` mode, `icu_delete_event` and `icu_bulk_delete_events` return a uniform envelope showing what was deleted and what was skipped:
 
@@ -199,6 +199,17 @@ The user's personal additions to their account: custom charts on dashboards, cus
 | `icu_create_custom_item`    | Add a new custom chart, field, zones config, or dashboard panel            |
 | `icu_update_custom_item`    | Modify an existing custom addition (rename, reconfigure, change visibility)|
 | `icu_delete_custom_item`    | Permanently remove a custom addition *(only registered when `INTERVALS_ICU_DELETE_MODE=full`; data-bearing field types may cascade)* |
+
+### Hevy (4 tools, fork-specific)
+
+**Not part of upstream `hhopke/intervals-icu-mcp`.** Hevy is a separate strength-training logging app/service with its own API key (`HEVY_API_KEY` in `.env`) — these tools are read-only and namespaced `hevy_*` to keep them clearly distinct from the `icu_*` Intervals.icu surface. Not gated by `INTERVALS_ICU_DELETE_MODE`.
+
+| Tool                         | Description                                                                 |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| `hevy_get_recent_workouts`   | List logged Hevy workouts, newest first — LIGHT summary (exercise/set counts, not weights/reps) |
+| `hevy_get_workout_details`   | Full per-set breakdown (weights, reps, RPE) of one logged workout by ID     |
+| `hevy_get_routines`          | List saved routine templates (e.g. "Séance A/B") — exercise names and set counts |
+| `hevy_get_exercise_templates`| Browse Hevy's exercise catalog (name, muscle group, equipment)             |
 
 ## MCP Resources
 

@@ -83,6 +83,20 @@ from .tools.gear import (
     update_gear,
     update_gear_reminder,
 )
+
+# Fork-specific: Hevy is a separate service (own API key), not part of upstream.
+from .tools.hevy import (
+    get_exercise_templates as hevy_get_exercise_templates,
+)
+from .tools.hevy import (
+    get_recent_workouts as hevy_get_recent_workouts,
+)
+from .tools.hevy import (
+    get_routines as hevy_get_routines,
+)
+from .tools.hevy import (
+    get_workout_details as hevy_get_workout_details,
+)
 from .tools.performance import get_power_curves
 from .tools.periodization import get_annual_training_plan
 from .tools.sport_settings import (
@@ -680,6 +694,44 @@ if _DELETE_MODE == "full":
             "openWorldHint": True,
         },
     )(delete_custom_item)
+
+# Register Hevy tools (fork-specific, read-only, separate API key)
+mcp.tool(
+    name="hevy_get_recent_workouts",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)(hevy_get_recent_workouts)
+mcp.tool(
+    name="hevy_get_workout_details",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)(hevy_get_workout_details)
+mcp.tool(
+    name="hevy_get_routines",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)(hevy_get_routines)
+mcp.tool(
+    name="hevy_get_exercise_templates",
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)(hevy_get_exercise_templates)
 
 
 # MCP Resources - Provide ongoing context
