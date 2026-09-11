@@ -2,12 +2,80 @@
 
 import math
 from datetime import datetime
-from typing import Any, Literal, cast
+from typing import Any, Literal, cast, get_args
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Type aliases for common enums
-ActivityType = Literal["Ride", "Run", "Swim", "Walk", "Hike", "VirtualRide", "VirtualRun", "Other"]
+# Full Intervals.icu activity discipline enum for the `type` field, mirrored
+# from openapi-spec.json (the import-workout `type` parameter enum — the events
+# endpoint validates against the same set, rejecting unknown values with 422
+# "Invalid type"; live-verified). tests/test_activity_disciplines.py keeps this
+# mirror in sync as the weekly spec update lands.
+ActivityType = Literal[
+    "Ride",
+    "Run",
+    "Swim",
+    "WeightTraining",
+    "Hike",
+    "Walk",
+    "AlpineSki",
+    "BackcountrySki",
+    "Badminton",
+    "Canoeing",
+    "Crossfit",
+    "EBikeRide",
+    "EMountainBikeRide",
+    "Elliptical",
+    "Golf",
+    "GravelRide",
+    "TrackRide",
+    "Handcycle",
+    "HighIntensityIntervalTraining",
+    "Hockey",
+    "IceSkate",
+    "InlineSkate",
+    "Kayaking",
+    "Kitesurf",
+    "MountainBikeRide",
+    "Cyclocross",
+    "NordicSki",
+    "OpenWaterSwim",
+    "Padel",
+    "Pilates",
+    "Pickleball",
+    "Racquetball",
+    "Rugby",
+    "RockClimbing",
+    "RollerSki",
+    "Rowing",
+    "Sail",
+    "Skateboard",
+    "Snowboard",
+    "Snowshoe",
+    "Soccer",
+    "Squash",
+    "StairStepper",
+    "StandUpPaddling",
+    "Surfing",
+    "TableTennis",
+    "Tennis",
+    "TrailRun",
+    "Transition",
+    "Velomobile",
+    "VirtualRide",
+    "VirtualRow",
+    "VirtualRun",
+    "VirtualSki",
+    "WaterSport",
+    "Wheelchair",
+    "Windsurf",
+    "Workout",
+    "Yoga",
+    "Other",
+]
+# Runtime view of ActivityType, for rendering hints and resources.
+ACTIVITY_DISCIPLINES: tuple[str, ...] = get_args(ActivityType)
 EventCategory = Literal[
     "WORKOUT",
     "NOTE",

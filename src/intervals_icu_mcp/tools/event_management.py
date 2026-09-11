@@ -92,9 +92,25 @@ VALID_CATEGORIES = {
 CATEGORY_ALIASES = {"RACE": "RACE_A", "GOAL": "TARGET"}
 VALID_AVAILABILITY = {"NORMAL", "LIMITED", "UNAVAILABLE"}
 RACE_CATEGORIES = {"RACE_A", "RACE_B", "RACE_C"}
-# Canonical Intervals.icu activity disciplines accepted by the API for the
-# `type` field. Must match models.ActivityType.
-ACTIVITY_TYPES_HINT = "Ride, Run, Swim, Walk, Hike, VirtualRide, VirtualRun, Other"
+# Common activity disciplines surfaced in parameter hints and error messages —
+# a curated subset of the full enum (models.ACTIVITY_DISCIPLINES). The complete
+# list is published in the intervals-icu://event-categories resource;
+# tests/test_activity_disciplines.py guards subset membership.
+COMMON_ACTIVITY_TYPES = (
+    "Ride",
+    "Run",
+    "Swim",
+    "Walk",
+    "Hike",
+    "WeightTraining",
+    "Workout",
+    "VirtualRide",
+    "VirtualRun",
+    "Other",
+)
+ACTIVITY_TYPES_HINT = ", ".join(COMMON_ACTIVITY_TYPES) + (
+    " (full discipline list: intervals-icu://event-categories resource)"
+)
 
 # Compact, in-context workout-syntax cheat-sheet for the `description` field.
 # Inlined (not only pointed at via the intervals-icu://workout-syntax resource)
@@ -312,8 +328,8 @@ async def create_event(
     ] = None,
     event_type: Annotated[
         str | None,
-        "Activity discipline (NOT the category): Ride, Run, Swim, Walk, Hike, "
-        "VirtualRide, VirtualRun, Other. Required for RACE_A/B/C events.",
+        "Activity discipline (NOT the category): " + ACTIVITY_TYPES_HINT + ". "
+        "Required for RACE_A/B/C events.",
     ] = None,
     duration_seconds: Annotated[int | None, "Planned duration in seconds"] = None,
     distance_meters: Annotated[float | None, "Planned distance in meters"] = None,
