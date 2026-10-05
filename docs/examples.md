@@ -67,6 +67,8 @@ _Note: The athlete profile resource (`intervals-icu://athlete/profile`) automati
 "Delete the workout on Saturday"
 "Duplicate this week's plan for next week"
 "Create 5 workouts for my build phase"
+"Hide my athlete's workouts for weeks 41 to 43 until I reveal them"   (coach)
+"Lock the FTP test and race-prep sessions so my athlete can't move them"   (coach)
 ```
 
 > **Structured Workouts**: The server includes a complete workout syntax reference (`intervals-icu://workout-syntax`) that enables LLMs to generate valid structured workouts with proper power/HR/pace targets, zones, ramps, repeats, and cadence for cycling, running, and swimming.
@@ -84,6 +86,9 @@ _Note: The athlete profile resource (`intervals-icu://athlete/profile`) automati
 ```
 "Show me my workout library"
 "What workouts are in my threshold folder?"
+"Save a 3x10min threshold session to my Threshold folder"
+"Make my Recovery Week workout 30 minutes shorter"
+"Build a 4-week sweet-spot training plan in my library"
 ```
 
 ## Gear Management
@@ -102,5 +107,6 @@ _Note: The athlete profile resource (`intervals-icu://athlete/profile`) automati
 "Set my indoor FTP to 260 watts"
 "Show my current FTP and thresholds for cycling"
 "Set my running threshold pace to 4:30 per kilometer"
-"Apply my new threshold settings to historical activities"
+"My lab test put VT1 at 145 bpm and VT2 at 172 — set my Ride HR zones to 130/145/165/172/188"
+"I entered my HR zones wrong last year — reapply the corrected zones to all my past rides"
 ```

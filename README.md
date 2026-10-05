@@ -12,10 +12,11 @@ A Model Context Protocol (MCP) server for Intervals.icu integration. Access your
 [![intervals-icu-mcp MCP server](https://glama.ai/mcp/servers/hhopke/intervals-icu-mcp/badges/score.svg)](https://glama.ai/mcp/servers/hhopke/intervals-icu-mcp)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/hhopke/intervals-icu-mcp/blob/main/LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/hhopke/intervals-icu-mcp/pkgs/container/intervals-icu-mcp)
+[![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4?logo=githubsponsors)](https://github.com/sponsors/hhopke)
 
 ## Overview
 
-62 tools spanning activities, activity analysis, activity messages, athlete profile, wellness, events/calendar, performance curves, workout library, gear, sport settings, and custom items — plus 4 fork-specific Hevy tools (strength-training logs, routines, exercise catalog) not part of upstream. Plus 4 MCP Resources (athlete profile, workout syntax, event categories, custom item schemas) and 7 MCP Prompts (training analysis, recovery check, weekly planning, and more). See [Available Tools](#available-tools) for the per-category breakdown.
+69 tools spanning activities, activity analysis, activity messages, athlete profile, wellness, events/calendar, performance curves, workout library, gear, sport settings, and custom items — plus 4 fork-specific Hevy tools (strength-training logs, routines, exercise catalog) not part of upstream. Plus 4 MCP Resources (athlete profile, workout syntax, event categories, custom item schemas) and 9 MCP Prompts (training analysis, recovery check, weekly planning, and more). See [Available Tools](#available-tools) for the per-category breakdown.
 
 ## Quick Start
 
@@ -213,7 +214,7 @@ For the full catalogue of example prompts by category, see [docs/examples.md](ht
 
 ## Available Tools
 
-66 tools (62 Intervals.icu + 4 fork-specific Hevy), 4 resources, and 7 prompt templates. One-line summary below — full reference in [docs/tools.md](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md).
+73 tools (69 Intervals.icu + 4 fork-specific Hevy), 4 resources, and 9 prompt templates. One-line summary below — full reference in [docs/tools.md](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md).
 
 | Category | Tools | Summary |
 |---|---|---|
@@ -222,9 +223,9 @@ For the full catalogue of example prompts by category, see [docs/examples.md](ht
 | [Activity Messages](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#activity-messages-2-tools) | 2 | Read and post notes/comments/coach feedback on activities |
 | [Athlete](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#athlete-4-tools) | 4 | Profile, CTL/ATL/TSB analysis, and fitness chart time-series |
 | [Wellness](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#wellness-3-tools) | 3 | HRV, sleep, recovery metrics |
-| [Events / Calendar](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#events--calendar-11-tools) | 11 | Planned workouts, races, notes, ATP periodization (bulk ops supported) |
+| [Events / Calendar](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#events--calendar-12-tools) | 12 | Planned workouts, races, notes, ATP periodization (bulk ops supported) |
 | [Performance / Curves](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#performance--curves-3-tools) | 3 | Power, HR, and pace curves with zones |
-| [Workout Library](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#workout-library-2-tools) | 2 | Browse workout folders and training plans |
+| [Workout Library](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#workout-library-8-tools) | 8 | Browse, create, and delete folders and training plans; create (incl. bulk), update, and delete library workouts |
 | [Gear Management](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#gear-management-6-tools) | 6 | Track equipment and maintenance reminders |
 | [Sport Settings](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#sport-settings-5-tools) | 5 | FTP, FTHR, pace thresholds, and zones |
 | [Custom Items](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#custom-items-5-tools) | 5 | User customizations: custom charts, fields, zones, dashboard panels |
@@ -252,9 +253,19 @@ See [docs/remote-deployment.md](https://github.com/hhopke/intervals-icu-mcp/blob
 - [Changelog](CHANGELOG.md) — release history
 - [Adding a new tool](https://github.com/hhopke/intervals-icu-mcp/blob/main/.claude/skills/add-tool/SKILL.md) — step-by-step workflow for contributors
 
+## Feedback
+
+**How are you using this?** Which tools you lean on, what your prompts look like, where it gets in your way — that shapes the roadmap more than my own guesses do.
+
+[Show and tell](https://github.com/hhopke/intervals-icu-mcp/discussions/categories/show-and-tell) · [Q&A](https://github.com/hhopke/intervals-icu-mcp/discussions/categories/q-a) · [Ideas](https://github.com/hhopke/intervals-icu-mcp/discussions/categories/ideas) · [General](https://github.com/hhopke/intervals-icu-mcp/discussions/categories/general) — or [open an issue](https://github.com/hhopke/intervals-icu-mcp/issues/new/choose) for a reproducible bug.
+
 ## Contributing
 
-Issues and pull requests are welcome. Before opening a PR, run `make can-release` locally to match what CI enforces (ruff, pyright, pytest). For new tools, follow the pattern in [`.claude/skills/add-tool/SKILL.md`](https://github.com/hhopke/intervals-icu-mcp/blob/main/.claude/skills/add-tool/SKILL.md) and add a respx-mocked test file alongside the implementation.
+**Contributions are very welcome, and none is too small** — a typo, a clearer parameter description, an extra test, a whole new tool. No Python or MCP expertise assumed. See [CONTRIBUTING.md](https://github.com/hhopke/intervals-icu-mcp/blob/main/CONTRIBUTING.md); in short, run `make can-release` before opening a PR. [Good first issues](https://github.com/hhopke/intervals-icu-mcp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) are a gentle place to start.
+
+## Sponsor
+
+Free under the MIT License, maintained in my spare time. If it's useful to you, [GitHub Sponsors](https://github.com/sponsors/hhopke) supports continued development — entirely optional, and feedback or a PR helps just as much.
 
 ## License
 

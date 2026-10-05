@@ -31,11 +31,11 @@ class TestInMemoryTransport:
             assert client.is_connected()
 
     async def test_all_default_mode_tools_registered(self):
-        """Default delete_mode=safe registers 63 tools (3 destructive icu_ tools gated,
+        """Default delete_mode=safe registers 70 tools (3 destructive icu_ tools gated,
         plus 4 fork-specific hevy_ tools that aren't gated by delete mode)."""
         async with Client(mcp) as client:
             tools = await client.list_tools()
-            assert len(tools) == 63
+            assert len(tools) == 70
             names = {t.name for t in tools}
             # Spot-check tools from different modules / tiers
             assert "icu_get_recent_activities" in names
@@ -43,6 +43,7 @@ class TestInMemoryTransport:
             assert "icu_get_fitness_chart" in names
             assert "icu_bulk_create_events" in names  # Tier 2 coverage addition
             assert "icu_duplicate_events" in names
+            assert "icu_bulk_update_event_access" in names
             assert "icu_get_activity_messages" in names  # Activity messages
             assert "icu_get_custom_items" in names  # Custom items
             assert "icu_update_sport_settings" in names
@@ -69,7 +70,13 @@ class TestInMemoryTransport:
         """MCP tool annotations communicate risk to the LLM."""
         async with Client(mcp) as client:
             tools = await client.list_tools()
-            destructive_names = {"icu_delete_activity", "icu_delete_event", "icu_delete_gear"}
+            destructive_names = {
+                "icu_delete_activity",
+                "icu_delete_event",
+                "icu_delete_gear",
+                "icu_delete_workout",
+                "icu_delete_workout_folder",
+            }
             for tool in tools:
                 if tool.name in destructive_names:
                     assert tool.annotations is not None
@@ -205,5 +212,5 @@ class TestHTTPTransport:
                 tools_body = (await tools_resp.aread()).decode()
                 tools_payload = self._parse_sse_response(tools_body)
                 tool_names = {t["name"] for t in tools_payload["result"]["tools"]}
-                assert len(tool_names) == 63  # safe mode default
+                assert len(tool_names) == 70  # safe mode default
                 assert "icu_get_recent_activities" in tool_names

@@ -42,7 +42,7 @@ def _classify_event_date(start_date_local: str | None) -> str:
     return "future" if parsed > date.today() else "past"
 
 
-def _delete_envelope(
+def delete_envelope(
     deleted: list[int],
     skipped: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -110,6 +110,17 @@ COMMON_ACTIVITY_TYPES = (
 )
 ACTIVITY_TYPES_HINT = ", ".join(COMMON_ACTIVITY_TYPES) + (
     " (full discipline list: intervals-icu://event-categories resource)"
+)
+
+# The web UI's "Hide from athlete" / "Athlete cannot edit" checkboxes. They only matter
+# when a coach manages the athlete's calendar (athlete_id); Intervals.icu enforces them.
+HIDE_FROM_ATHLETE_HINT = (
+    "Hide this event from the athlete's calendar (the web UI's 'Hide from athlete' "
+    "checkbox). For coaches managing an athlete via athlete_id"
+)
+ATHLETE_CANNOT_EDIT_HINT = (
+    "Lock this event so the athlete cannot move or edit it (the web UI's 'Athlete "
+    "cannot edit' checkbox). For coaches managing an athlete via athlete_id"
 )
 
 # Compact, in-context workout-syntax cheat-sheet for the `description` field.
@@ -203,18 +214,30 @@ def _swim_work_lacks_intensity(steps: list[Any]) -> bool:
 
 
 def _workout_parse_info(event: Event) -> dict[str, Any] | None:
-    """Echo whether a WORKOUT `description` parsed into a structured workout.
+    """Parse signal for a calendar event; None for non-WORKOUT categories."""
+    if event.category != "WORKOUT":
+        return None
+    return workout_doc_parse_info(event.description, event.workout_doc, event.type)
+
+
+def workout_doc_parse_info(
+    description: str | None,
+    workout_doc: dict[str, Any] | None,
+    sport_type: str | None,
+) -> dict[str, Any] | None:
+    """Echo whether a workout `description` parsed into a structured workout.
 
     Intervals.icu always returns a workout_doc object, but its `steps` list is
     empty when the description could not be parsed (prose, or a non-native format
     a model invented). Surfacing this lets the caller tell a real structured
     workout — one that syncs to devices and gets a computed load — from free text
-    stored verbatim, instead of a silent "success". Returns None for non-WORKOUT
-    events or WORKOUT events with no description (nothing to parse).
+    stored verbatim, instead of a silent "success". Shared by WORKOUT calendar
+    events and library workouts, which parse the same syntax. Returns None when
+    there is no description (nothing to parse).
     """
-    if event.category != "WORKOUT" or not event.description:
+    if not description:
         return None
-    doc: dict[str, Any] = event.workout_doc or {}
+    doc: dict[str, Any] = workout_doc or {}
     steps: list[Any] = doc.get("steps") or []
     if steps:
         info: dict[str, Any] = {
@@ -226,7 +249,7 @@ def _workout_parse_info(event: Event) -> dict[str, Any] | None:
         # targets load fine off swim FTHR. Key on whether the *work* steps carry an
         # intensity target rather than on total load — a warmup pace zone or a stray
         # misapplied zone can leave a token load on an otherwise intensity-less set.
-        if event.type == "Swim" and _swim_work_lacks_intensity(steps):
+        if sport_type == "Swim" and _swim_work_lacks_intensity(steps):
             info["workout_load_hint"] = (
                 "Swim parsed but its work steps have no recognized pace or HR target, "
                 "so it gets no meaningful training load. Common causes: the words "
@@ -296,6 +319,8 @@ def _event_to_dict(event: Event) -> dict[str, Any]:
         result["training_load"] = event.icu_training_load
     if event.training_availability:
         result["training_availability"] = event.training_availability
+    if event.tags:
+        result["tags"] = event.tags
     if event.color:
         result["color"] = event.color
     if event.show_as_note is not None:
@@ -304,6 +329,10 @@ def _event_to_dict(event: Event) -> dict[str, Any]:
         result["not_on_fitness_chart"] = event.not_on_fitness_chart
     if event.show_on_ctl_line is not None:
         result["show_on_ctl_line"] = event.show_on_ctl_line
+    if event.hide_from_athlete is not None:
+        result["hide_from_athlete"] = event.hide_from_athlete
+    if event.athlete_cannot_edit is not None:
+        result["athlete_cannot_edit"] = event.athlete_cannot_edit
 
     parse_info = _workout_parse_info(event)
     if parse_info:
@@ -344,12 +373,19 @@ async def create_event(
         "Training availability: NORMAL, LIMITED, or UNAVAILABLE. Typical for "
         "INJURED/SICK/HOLIDAY blocks.",
     ] = None,
+    tags: Annotated[
+        list[str] | None,
+        "Calendar tags for grouping and filtering, without the leading # "
+        '(e.g. ["sweet-spot", "indoor"])',
+    ] = None,
     color: Annotated[str | None, "Custom display color (hex string)"] = None,
     show_as_note: Annotated[bool | None, "Show event as a note marker on the fitness chart"] = None,
     not_on_fitness_chart: Annotated[
         bool | None, "Hide event entirely from the fitness chart"
     ] = None,
     show_on_ctl_line: Annotated[bool | None, "Render event on the CTL line"] = None,
+    hide_from_athlete: Annotated[bool | None, HIDE_FROM_ATHLETE_HINT] = None,
+    athlete_cannot_edit: Annotated[bool | None, ATHLETE_CANNOT_EDIT_HINT] = None,
     athlete_id: Annotated[str | None, "Athlete ID (for coaches managing multiple athletes)"] = None,
     ctx: Context | None = None,
 ) -> str:
@@ -430,6 +466,8 @@ async def create_event(
             event_data["end_date_local"] = end_date
         if normalized_availability is not None:
             event_data["training_availability"] = normalized_availability
+        if tags is not None:
+            event_data["tags"] = tags
         if color is not None:
             event_data["color"] = color
         if show_as_note is not None:
@@ -438,6 +476,10 @@ async def create_event(
             event_data["not_on_fitness_chart"] = not_on_fitness_chart
         if show_on_ctl_line is not None:
             event_data["show_on_ctl_line"] = show_on_ctl_line
+        if hide_from_athlete is not None:
+            event_data["hide_from_athlete"] = hide_from_athlete
+        if athlete_cannot_edit is not None:
+            event_data["athlete_cannot_edit"] = athlete_cannot_edit
 
         async with ICUClient(config) as client:
             event = await client.create_event(event_data, athlete_id=athlete_id)
@@ -469,10 +511,17 @@ async def update_event(
     training_availability: Annotated[
         str | None, "Updated training availability: NORMAL, LIMITED, or UNAVAILABLE"
     ] = None,
+    tags: Annotated[
+        list[str] | None,
+        "Replacement tag list, without the leading # — overwrites existing tags, so "
+        "include any to keep. [] clears",
+    ] = None,
     color: Annotated[str | None, "Updated color (hex string)"] = None,
     show_as_note: Annotated[bool | None, "Show event as a note on the fitness chart"] = None,
     not_on_fitness_chart: Annotated[bool | None, "Hide event from the fitness chart"] = None,
     show_on_ctl_line: Annotated[bool | None, "Render event on the CTL line"] = None,
+    hide_from_athlete: Annotated[bool | None, HIDE_FROM_ATHLETE_HINT] = None,
+    athlete_cannot_edit: Annotated[bool | None, ATHLETE_CANNOT_EDIT_HINT] = None,
     athlete_id: Annotated[str | None, "Athlete ID (for coaches managing multiple athletes)"] = None,
     ctx: Context | None = None,
 ) -> str:
@@ -535,6 +584,8 @@ async def update_event(
             event_data["end_date_local"] = end_date
         if normalized_availability is not None:
             event_data["training_availability"] = normalized_availability
+        if tags is not None:
+            event_data["tags"] = tags
         if color is not None:
             event_data["color"] = color
         if show_as_note is not None:
@@ -543,6 +594,10 @@ async def update_event(
             event_data["not_on_fitness_chart"] = not_on_fitness_chart
         if show_on_ctl_line is not None:
             event_data["show_on_ctl_line"] = show_on_ctl_line
+        if hide_from_athlete is not None:
+            event_data["hide_from_athlete"] = hide_from_athlete
+        if athlete_cannot_edit is not None:
+            event_data["athlete_cannot_edit"] = athlete_cannot_edit
 
         if not event_data:
             return ResponseBuilder.build_error_response(
@@ -587,7 +642,7 @@ async def delete_event(
                 event = await client.get_event(event_id, athlete_id=athlete_id)
                 if _classify_event_date(event.start_date_local) != "future":
                     return ResponseBuilder.build_response(
-                        data=_delete_envelope(
+                        data=delete_envelope(
                             deleted=[],
                             skipped=[_skipped_entry_for(event_id, event)],
                         ),
@@ -602,7 +657,7 @@ async def delete_event(
                     error_type="api_error",
                 )
             return ResponseBuilder.build_response(
-                data=_delete_envelope(deleted=[event_id], skipped=[]),
+                data=delete_envelope(deleted=[event_id], skipped=[]),
                 query_type="delete_event",
                 metadata={"message": f"Successfully deleted event {event_id}"},
             )
@@ -637,8 +692,9 @@ async def bulk_create_events(
         "call. Required per event: start_date_local, name, category. Optional: "
         "description, event_type (activity discipline Ride/Run/Swim/…), "
         "duration_seconds, distance_meters, training_load, "
-        "end_date_local, training_availability, color, "
-        "show_as_note, not_on_fitness_chart, show_on_ctl_line. See "
+        "end_date_local, training_availability, tags (no leading #), color, "
+        "show_as_note, not_on_fitness_chart, show_on_ctl_line, hide_from_athlete, "
+        "athlete_cannot_edit. See "
         "intervals-icu://event-categories for the category enum. " + WORKOUT_SYNTAX_HINT,
     ],
     athlete_id: Annotated[str | None, "Athlete ID (for coaches managing multiple athletes)"] = None,
@@ -773,6 +829,209 @@ async def bulk_create_events(
         )
 
 
+# Parallel requests are capped so revealing a multi-week block doesn't trip the API's 429.
+_ACCESS_UPDATE_CONCURRENCY = 5
+
+
+async def bulk_update_event_access(
+    event_ids: Annotated[
+        str | None,
+        "JSON array of calendar event IDs (e.g. '[123, 456]'). Use this OR oldest+newest",
+    ] = None,
+    oldest: Annotated[
+        str | None, "First day of a date range (YYYY-MM-DD), with newest. Use instead of event_ids"
+    ] = None,
+    newest: Annotated[str | None, "Last day of the date range (YYYY-MM-DD), inclusive"] = None,
+    hide_from_athlete: Annotated[
+        bool | None, "true hides the workouts from the athlete, false reveals them"
+    ] = None,
+    athlete_cannot_edit: Annotated[
+        bool | None, "true locks the workouts against athlete edits, false unlocks them"
+    ] = None,
+    athlete_id: Annotated[str | None, "Athlete ID (for coaches managing multiple athletes)"] = None,
+    ctx: Context | None = None,
+) -> str:
+    """Hide/reveal or lock/unlock MANY planned WORKOUT calendar events at once.
+
+    Sets the web UI's "Hide from athlete" and "Athlete cannot edit" checkboxes —
+    e.g. build a training block ahead of time, hide it, and reveal it week by
+    week, or lock key sessions. Only the flags you pass are changed. Only
+    WORKOUT events are touched: notes, races and targets are reported under
+    `skipped`. IDs are calendar event IDs (from icu_get_calendar_events /
+    icu_get_upcoming_workouts), not workout-library IDs. For one event use
+    icu_update_event.
+    """
+    assert ctx is not None
+    config: ICUConfig = await ctx.get_state("config")
+
+    import json
+
+    if hide_from_athlete is None and athlete_cannot_edit is None:
+        return ResponseBuilder.build_error_response(
+            "Pass hide_from_athlete and/or athlete_cannot_edit.",
+            error_type="validation_error",
+        )
+
+    use_range = oldest is not None or newest is not None
+    if event_ids is not None and use_range:
+        return ResponseBuilder.build_error_response(
+            "Use either event_ids or oldest+newest, not both.",
+            error_type="validation_error",
+        )
+    if event_ids is None and not use_range:
+        return ResponseBuilder.build_error_response(
+            "Select events with event_ids or with oldest+newest.",
+            error_type="validation_error",
+        )
+
+    ids_list: list[int] = []
+    date_range: tuple[str, str] | None = None
+    if use_range:
+        if oldest is None or newest is None:
+            return ResponseBuilder.build_error_response(
+                "A date range needs both oldest and newest.",
+                error_type="validation_error",
+            )
+        try:
+            oldest_date = datetime.fromisoformat(oldest).date()
+            newest_date = datetime.fromisoformat(newest).date()
+        except ValueError:
+            return ResponseBuilder.build_error_response(
+                "Invalid date format. Please use YYYY-MM-DD.",
+                error_type="validation_error",
+            )
+        if oldest_date > newest_date:
+            return ResponseBuilder.build_error_response(
+                "oldest must be on or before newest.",
+                error_type="validation_error",
+            )
+        date_range = (oldest_date.isoformat(), newest_date.isoformat())
+    else:
+        try:
+            parsed = json.loads(event_ids or "")
+        except json.JSONDecodeError:
+            parsed = None
+        if (
+            not isinstance(parsed, list)
+            or not parsed
+            or not all(
+                isinstance(v, int) and not isinstance(v, bool) for v in cast(list[Any], parsed)
+            )
+        ):
+            return ResponseBuilder.build_error_response(
+                "event_ids must be a non-empty JSON array of integers (e.g., '[123, 456]')",
+                error_type="validation_error",
+            )
+        # Dedupe (order kept) so a repeated ID isn't fetched and PUT twice concurrently.
+        ids_list = list(dict.fromkeys(cast(list[int], parsed)))
+
+    flags: dict[str, bool] = {}
+    if hide_from_athlete is not None:
+        flags["hide_from_athlete"] = hide_from_athlete
+    if athlete_cannot_edit is not None:
+        flags["athlete_cannot_edit"] = athlete_cannot_edit
+
+    failed: list[dict[str, Any]] = []
+
+    try:
+        async with ICUClient(config) as client:
+            # One cap for the per-ID GETs and the PUTs alike.
+            semaphore = asyncio.Semaphore(_ACCESS_UPDATE_CONCURRENCY)
+
+            async def _get(event_id: int) -> Event:
+                async with semaphore:
+                    return await client.get_event(event_id, athlete_id=athlete_id)
+
+            candidates: list[Event] = []
+            if date_range is not None:
+                candidates = await client.get_events(
+                    athlete_id=athlete_id, oldest=date_range[0], newest=date_range[1]
+                )
+            else:
+                fetched = await asyncio.gather(
+                    *(_get(eid) for eid in ids_list), return_exceptions=True
+                )
+                for eid, result in zip(ids_list, fetched, strict=True):
+                    if isinstance(result, ICUAPIError):
+                        failed.append({"id": eid, "error": result.message})
+                    elif isinstance(result, BaseException):
+                        raise result
+                    else:
+                        candidates.append(result)
+
+            to_update: list[Event] = []
+            unchanged: list[int] = []
+            skipped: list[dict[str, Any]] = []
+            for event in candidates:
+                if event.category != "WORKOUT":
+                    skipped.append(
+                        {
+                            "id": event.id,
+                            "date": event.start_date_local,
+                            "name": event.name,
+                            "category": event.category,
+                            "reason": "not_workout",
+                        }
+                    )
+                elif all(bool(getattr(event, k)) == v for k, v in flags.items()):
+                    unchanged.append(event.id)
+                else:
+                    to_update.append(event)
+
+            async def _put(event: Event) -> Event:
+                async with semaphore:
+                    return await client.update_event(event.id, flags, athlete_id=athlete_id)
+
+            results = await asyncio.gather(
+                *(_put(event) for event in to_update), return_exceptions=True
+            )
+
+            updated: list[dict[str, Any]] = []
+            for event, result in zip(to_update, results, strict=True):
+                if isinstance(result, ICUAPIError):
+                    failed.append({"id": event.id, "error": result.message})
+                elif isinstance(result, BaseException):
+                    raise result
+                else:
+                    updated.append(
+                        {
+                            "id": result.id,
+                            "date": result.start_date_local,
+                            "name": result.name,
+                            "hide_from_athlete": result.hide_from_athlete,
+                            "athlete_cannot_edit": result.athlete_cannot_edit,
+                        }
+                    )
+
+            return ResponseBuilder.build_response(
+                data={
+                    "updated": updated,
+                    "updated_count": len(updated),
+                    "unchanged": unchanged,
+                    "unchanged_count": len(unchanged),
+                    "skipped": skipped,
+                    "skipped_count": len(skipped),
+                    "failed": failed,
+                    "failed_count": len(failed),
+                },
+                query_type="bulk_update_event_access",
+                metadata={
+                    "message": (
+                        f"Updated {len(updated)} workout(s); {len(unchanged)} already set, "
+                        f"{len(skipped)} non-WORKOUT skipped, {len(failed)} failed"
+                    ),
+                    "flags": flags,
+                },
+            )
+
+    except ICUAPIError as e:
+        return ResponseBuilder.build_error_response(e.message, error_type="api_error")
+    except Exception as e:
+        return ResponseBuilder.build_error_response(
+            f"Unexpected error: {str(e)}", error_type="internal_error"
+        )
+
+
 async def bulk_delete_events(
     event_ids: Annotated[str, "JSON array of event IDs to delete (e.g., '[123, 456, 789]')"],
     athlete_id: Annotated[str | None, "Athlete ID (for coaches managing multiple athletes)"] = None,
@@ -840,7 +1099,7 @@ async def bulk_delete_events(
                     await client.bulk_delete_events(ids_to_delete, athlete_id=athlete_id)
 
                 return ResponseBuilder.build_response(
-                    data=_delete_envelope(deleted=ids_to_delete, skipped=skipped),
+                    data=delete_envelope(deleted=ids_to_delete, skipped=skipped),
                     query_type="bulk_delete_events",
                     metadata={
                         "message": (
@@ -852,7 +1111,7 @@ async def bulk_delete_events(
 
             await client.bulk_delete_events(ids_list, athlete_id=athlete_id)
             return ResponseBuilder.build_response(
-                data=_delete_envelope(deleted=ids_list, skipped=[]),
+                data=delete_envelope(deleted=ids_list, skipped=[]),
                 query_type="bulk_delete_events",
                 metadata={"message": f"Successfully deleted {len(ids_list)} events"},
             )

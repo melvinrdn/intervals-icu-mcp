@@ -1,6 +1,14 @@
 # Contributing
 
-Thanks for your interest in improving the Intervals.icu MCP server. Bug reports, feature requests, and pull requests are all welcome.
+Thanks for your interest in improving the Intervals.icu MCP server. **Contributions are heavily welcomed, and none is too small** — a typo, a clearer parameter description, one extra test case, a good bug report. No Python or MCP expertise assumed, and a draft PR is a fine way to ask for help.
+
+## Ways to help
+
+- **Tell us how you're using it** — [Show and tell](https://github.com/hhopke/intervals-icu-mcp/discussions/categories/show-and-tell). The most useful thing you can contribute without writing code.
+- **Ask or answer a question** — [Q&A](https://github.com/hhopke/intervals-icu-mcp/discussions/categories/q-a).
+- **Float an idea** — [Ideas](https://github.com/hhopke/intervals-icu-mcp/discussions/categories/ideas), even half-formed.
+- **Report a bug or request a feature** — [open an issue](https://github.com/hhopke/intervals-icu-mcp/issues/new/choose).
+- **Send a pull request** — [good first issues](https://github.com/hhopke/intervals-icu-mcp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) are a gentle landing.
 
 ## Development setup
 
@@ -40,7 +48,7 @@ The repo ships a step-by-step guide: [.claude/skills/add-tool/SKILL.md](.claude/
 
 ## Reporting bugs / requesting features
 
-Open an issue using the templates at [github.com/hhopke/intervals-icu-mcp/issues/new/choose](https://github.com/hhopke/intervals-icu-mcp/issues/new/choose). For bugs, please include the MCP client you're using (Claude Desktop, Claude Code, Cursor, etc.), the tool name, and the full error response if you have one.
+Open an issue using the templates at [github.com/hhopke/intervals-icu-mcp/issues/new/choose](https://github.com/hhopke/intervals-icu-mcp/issues/new/choose). For bugs, please include the MCP client you're using (Claude Desktop, Claude Code, Cursor, etc.), the tool name, and the full error response if you have one. Not sure it's a bug? [Ask in Q&A](https://github.com/hhopke/intervals-icu-mcp/discussions/categories/q-a) first.
 
 ## Code style
 

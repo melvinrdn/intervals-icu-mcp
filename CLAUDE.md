@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-MCP (Model Context Protocol) server for Intervals.icu — provides up to 66 tools, 4 resources, and 9 prompts for accessing training data, wellness metrics, and performance analysis through Claude and other LLMs. The default `INTERVALS_ICU_DELETE_MODE=safe` registers 63 tools; `full` registers all 66, `none` registers 60.
+MCP (Model Context Protocol) server for Intervals.icu — provides up to 73 tools (69 Intervals.icu + 4 fork-specific Hevy), 4 resources, and 9 prompts for accessing training data, wellness metrics, and performance analysis through Claude and other LLMs. The default `INTERVALS_ICU_DELETE_MODE=safe` registers 70 tools; `full` registers all 73, `none` registers 65 (the 4 Hevy tools register in every mode).
 
 **This is Melvin's personal fork** of `hhopke/intervals-icu-mcp` (origin: `github.com/melvinrdn/intervals-icu-mcp`) and is free to diverge from upstream — e.g. the `hevy_*` tools below have no upstream equivalent. When following upstream-oriented process here (squash-merge conventions, CHANGELOG discipline, SemVer), use judgment about what still applies to a personal fork vs. what only made sense for the original project.
 
@@ -57,7 +57,7 @@ make docker/run       # Run Docker container
 7. `event_management.py` — Create/update/delete events
 8. `performance.py` — Power/HR/pace curves
 9. `curves.py` — HR and pace curve analysis
-10. `workout_library.py` — Browse workout folders and plans
+10. `workout_library.py` — Browse, create, and delete folders and plans; create/update/delete library workouts
 11. `gear.py` — Manage gear and reminders
 12. `sport_settings.py` — FTP, FTHR, pace thresholds
 13. `custom_items.py` — Charts, custom fields, zones, etc.
@@ -134,7 +134,7 @@ Follow SemVer with the narrowed contract defined in the CHANGELOG header. **Majo
 
 Running list of deferred breaking cleanups (do together in the next major; keep this list current as more are found):
 
-- _(empty — the accumulated items were drained in 5.0.0: create/bulk field-name unification, the no-op gear params, and the synthesized curve zone blocks. Add new entries here as they are found.)_
+- Rename `icu_get_upcoming_workouts` → `icu_get_upcoming_workout_events`, and its response key `workouts` → `events`. The tool returns dated **calendar events** of category `WORKOUT`, but its name reads as workout-library content, and the collision got sharper once the library gained `icu_create_workout` / `icu_update_workout` / `icu_delete_workout` (which take a library `workout_id`, not the event ID this tool returns). The description was sharpened in #132 as the non-breaking stopgap; the rename itself needs a major.
 
 ## Important Files
 
