@@ -7,7 +7,6 @@ from httpx import Response
 
 from intervals_icu_mcp.tools import sport_settings as sport_settings_tool
 from intervals_icu_mcp.tools.sport_settings import (
-    apply_sport_settings,
     create_sport_settings,
     delete_sport_settings,
     get_sport_settings,
@@ -54,7 +53,7 @@ RUN_SETTINGS = {
     "id": 2,
     "types": ["Run"],
     "lthr": 170,
-    "threshold_pace": 4.5,
+    "threshold_pace": 1000 / 270,  # m/s for 4:30/km
     "pace_units": "MINS_KM",
     "pace_load_type": "RUN",
     "power_zones": None,
@@ -301,7 +300,7 @@ class TestSportSettingsTools:
                     "id": 2,
                     "types": ["Run"],
                     "lthr": 172,
-                    "threshold_pace": 4.5,
+                    "threshold_pace": 1000 / 270,  # m/s for 4:30/km
                     "pace_units": "MINS_KM",
                     "pace_load_type": "RUN",
                 },
@@ -314,7 +313,7 @@ class TestSportSettingsTools:
         assert response["data"]["fthr_bpm"] == 172
         assert json.loads(route.calls.last.request.content) == {
             "lthr": 172,
-            "threshold_pace": 4.5,
+            "threshold_pace": pytest.approx(1000 / 270),
             "pace_units": "MINS_KM",
             "pace_load_type": "RUN",
         }
@@ -364,20 +363,6 @@ class TestSportSettingsTools:
 
         assert route.calls.last.request.url.params["recalcHrZones"] == "false"
 
-    async def test_apply_sport_settings_success(self, patch_config, respx_mock):
-        """Apply settings uses PUT and returns the API payload with metadata."""
-        respx_mock.put("/athlete/i123456/sport-settings/1/apply").mock(
-            return_value=Response(200, json={"applied": 42})
-        )
-
-        result = await apply_sport_settings(sport_id=1)
-
-        response = json.loads(result)
-        assert response["data"]["applied"] == 42
-        assert response["metadata"]["message"] == (
-            "Sport settings applied to activities successfully"
-        )
-
     async def test_create_sport_settings_success(self, patch_config, respx_mock):
         """Successfully creating a new Run settings object."""
         route = respx_mock.post("/athlete/i123456/sport-settings").mock(
@@ -387,7 +372,7 @@ class TestSportSettingsTools:
                     "id": 7,
                     "types": ["Run"],
                     "lthr": 170,
-                    "threshold_pace": 4.5,
+                    "threshold_pace": 1000 / 270,  # m/s for 4:30/km
                     "pace_units": "MINS_KM",
                     "pace_load_type": "RUN",
                 },
@@ -407,7 +392,7 @@ class TestSportSettingsTools:
         assert json.loads(route.calls.last.request.content) == {
             "types": ["Run"],
             "lthr": 170,
-            "threshold_pace": 4.5,
+            "threshold_pace": pytest.approx(1000 / 270),
             "pace_units": "MINS_KM",
             "pace_load_type": "RUN",
         }

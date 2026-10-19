@@ -48,7 +48,7 @@ Prefer Claude Code, Cursor, or ChatGPT? See [Client Configuration](#client-confi
 
 ## Prerequisites
 
-Install [uv](https://github.com/astral-sh/uv) — it handles Python, dependencies, and execution in one tool. `brew install uv` on macOS/Linux, or `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"` on Windows. From there, `uvx` fetches Python and the package automatically. Docker is also supported as an alternative.
+Install [uv](https://github.com/astral-sh/uv) — it handles Python, dependencies, and execution in one tool. `curl -LsSf https://astral.sh/uv/install.sh | sh` on macOS/Linux (or `brew install uv`; Homebrew no longer installs on Intel Macs), or `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"` on Windows. From there, `uvx` fetches Python and the package automatically. If your MCP client can't find `uvx`, set `command` to the full path that `which uvx` prints. Docker is also supported as an alternative.
 
 ## Intervals.icu API Key Setup
 
@@ -221,13 +221,13 @@ For the full catalogue of example prompts by category, see [docs/examples.md](ht
 | [Activities](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#activities-13-tools) | 13 | Query, search, update, delete, download activities |
 | [Activity Analysis](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#activity-analysis-8-tools) | 8 | Streams, intervals, best efforts, histograms |
 | [Activity Messages](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#activity-messages-2-tools) | 2 | Read and post notes/comments/coach feedback on activities |
-| [Athlete](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#athlete-4-tools) | 4 | Profile, CTL/ATL/TSB analysis, and fitness chart time-series |
+| [Athlete](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#athlete-5-tools) | 5 | Accessible athletes, profile and athlete notes, CTL/ATL/TSB analysis, fitness chart time-series |
 | [Wellness](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#wellness-3-tools) | 3 | HRV, sleep, recovery metrics |
 | [Events / Calendar](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#events--calendar-12-tools) | 12 | Planned workouts, races, notes, ATP periodization (bulk ops supported) |
 | [Performance / Curves](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#performance--curves-3-tools) | 3 | Power, HR, and pace curves with zones |
 | [Workout Library](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#workout-library-8-tools) | 8 | Browse, create, and delete folders and training plans; create (incl. bulk), update, and delete library workouts |
 | [Gear Management](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#gear-management-6-tools) | 6 | Track equipment and maintenance reminders |
-| [Sport Settings](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#sport-settings-5-tools) | 5 | FTP, FTHR, pace thresholds, and zones |
+| [Sport Settings](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#sport-settings-4-tools) | 4 | FTP, FTHR, pace thresholds, and zones |
 | [Custom Items](https://github.com/hhopke/intervals-icu-mcp/blob/main/docs/tools.md#custom-items-5-tools) | 5 | User customizations: custom charts, fields, zones, dashboard panels |
 | [Hevy](docs/tools.md#hevy-4-tools-fork-specific) | 4 | *Fork-specific, not upstream.* Logged workouts, routines, exercise catalog |
 

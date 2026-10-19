@@ -23,6 +23,30 @@ breaking; this narrower contract applies from the next release onward.)
   `hevy_get_workout_details`, `hevy_get_routines`, `hevy_get_exercise_templates`. Configured via
   a new `HEVY_API_KEY` env var; not gated by `INTERVALS_ICU_DELETE_MODE`.
 
+## [5.7.1] — 2026-10-18
+
+### Fixed
+- `uvx intervals-icu-mcp` works on Intel Macs again without a compiler. cryptography (pulled in through fastmcp → authlib) ships only arm64 macOS wheels from 49.0.0 on, so uv fell back to building it from source, which needs Rust, OpenSSL and pkg-config. On x86_64 macOS the server now caps cryptography below 49, which still ships universal2 wheels. Every other platform is unchanged. cryptography 48.x has published advisories (PYSEC-2026-3552/3553/3554), but they cover PKCS#7 decryption and X.509 certificate verification, which this server never calls. The README now lists the official uv installer next to Homebrew, because Homebrew no longer installs on Intel Macs.
+
+## [5.7.0] — 2026-10-18
+
+### Fixed
+- The Docker image healthcheck no longer starts an MCP session and lists the full tool catalog every 30 seconds. It now runs `python -m intervals_icu_mcp.healthcheck`, a standard-library probe. For HTTP, streamable HTTP and SSE servers it sends `GET /health`, a new static route that returns `{"status":"ok"}` without touching MCP or Intervals.icu. For stdio servers it keeps the old import-only check. The probe finds the server's transport from the container's PID 1 command line. Behind a wrapper such as `docker run --init`, it falls back to the import check unless `--host`/`--port` are passed. The Docker timeout goes from 3 s to 5 s. `/health` is now reserved, so `--path /health` is rejected on HTTP transports. See `docs/remote-deployment.md` for compose examples. Contributed by @FabioCamin8 (#151).
+
+### Removed
+- `icu_apply_sport_settings` is retired, because Intervals.icu removed the endpoint behind it. The OpenAPI spec no longer lists `PUT /athlete/{id}/sport-settings/{id}/apply` (#157). Live, the route returns the same 404 as a path that never existed, while PUT-only routes that still exist return 405, so the tool failed on every call. This ships outside a major for the same reason as the `oldest_date` removal in #85: the tool could not work, so removing it breaks no working integration. To re-zone past activities, use Update zones in the Intervals.icu activity list view; the `icu_update_sport_settings` description now says so. Settings written with `icu_update_sport_settings` still apply to new activities as before. A rebuild on per-activity zone updates is tracked as a help-wanted follow-up (#159). The server goes from 70 tools to 69: `safe` (the default) from 67 to 66, `none` from 62 to 61 (closes #158).
+
+## [5.6.0] — 2026-10-08
+
+### Added
+- `icu_update_athlete_notes` replaces or clears the free-text Markdown notes kept on an athlete's record, so standing context such as injuries, preferences and goals can be written back instead of edited in the web UI. It sends only `icu_notes` in a `PUT /athlete/{id}`; an empty string clears the note. The notes are returned by the existing read tools: `icu_get_athlete_profile` as `profile.notes` and `icu_list_athletes` as `notes` next to `tags`, omitted when no notes are set. `icu_list_athletes` responses grow for coaches with long rosters and long notes. Live-verified over stdio that the `PUT` changes only `icu_notes`. Contributed by @tpoole (#149).
+
+This takes the server from 69 tools to 70 — `safe` (the default) from 66 to 67, `none` from 61 to 62.
+
+### Fixed
+- Run threshold pace was misread and mis-written. The server treated `threshold_pace` as minutes per km, but Intervals.icu stores it as speed in m/s for every sport (`pace_units` only controls display), so a 4:40/km threshold (3.571 m/s) showed as "3:34 /km" in `icu_get_sport_settings` and `icu_get_athlete_profile`. Reads now convert m/s to min/km, and `icu_update_sport_settings` / `icu_create_sport_settings` convert `pace_threshold` from min/km to m/s before sending, so a value written with `pace_threshold=4.5` is stored as 4:30/km rather than about 3:42/km. Swim already used m/s (#88). If you set a Run threshold pace with an earlier version, the stored value is wrong (4.5 was stored as 4.5 m/s, about 3:42/km), so set it again with `icu_update_sport_settings` or in the Intervals.icu UI (closes #152).
+- `icu_get_activity_streams` returned `left_right_balance` with no indication of which side the percentage describes, so a consumer reading it as "left %" inverted left/right analysis (a stream averaging 48 is L 52% / R 48% in the Intervals.icu UI). The stream is the right pedal's share, per the FIT convention and consistent with the reporter's example; the tool description and a new `stream_notes` entry in the response now say so whenever the stream is returned (closes #153).
+
 ## [5.5.0] — 2026-10-02
 
 ### Added

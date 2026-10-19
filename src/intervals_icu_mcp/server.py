@@ -6,12 +6,21 @@ from typing import Any
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 # Load environment variables
 load_dotenv()
 
 # Initialize FastMCP server
 mcp = FastMCP("intervals_icu_mcp")
+
+
+@mcp.custom_route("/health", methods=["GET"], include_in_schema=False)
+async def health(request: Request) -> JSONResponse:
+    """Return static HTTP liveness without accessing MCP or upstream APIs."""
+    return JSONResponse({"status": "ok"})
+
 
 # Register middleware
 from .auth import load_config
@@ -56,6 +65,7 @@ from .tools.athlete import (
     get_fitness_chart,
     get_fitness_summary,
     list_athletes,
+    update_athlete_notes,
 )
 from .tools.curves import get_hr_curves, get_pace_curves
 from .tools.custom_items import (
@@ -101,7 +111,6 @@ from .tools.hevy import (
 from .tools.performance import get_power_curves
 from .tools.periodization import get_annual_training_plan
 from .tools.sport_settings import (
-    apply_sport_settings,
     create_sport_settings,
     delete_sport_settings,
     get_sport_settings,
@@ -332,6 +341,15 @@ mcp.tool(
         "openWorldHint": True,
     },
 )(get_athlete_profile)
+mcp.tool(
+    name="icu_update_athlete_notes",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)(update_athlete_notes)
 mcp.tool(
     name="icu_get_fitness_summary",
     annotations={
@@ -674,15 +692,6 @@ mcp.tool(
         "openWorldHint": True,
     },
 )(update_sport_settings)
-mcp.tool(
-    name="icu_apply_sport_settings",
-    annotations={
-        "readOnlyHint": False,
-        "destructiveHint": True,
-        "idempotentHint": False,
-        "openWorldHint": True,
-    },
-)(apply_sport_settings)
 mcp.tool(
     name="icu_create_sport_settings",
     annotations={
@@ -1258,7 +1267,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="URL path to mount the server under (HTTP transports only).",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.transport != "stdio" and args.path is not None:
+        if args.path.removesuffix("/") == "/health":
+            parser.error("--path cannot be /health because it conflicts with the health route")
+    return args
 
 
 async def _count_registered_tools() -> int:

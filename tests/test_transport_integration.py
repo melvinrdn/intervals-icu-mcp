@@ -35,8 +35,8 @@ class TestInMemoryTransport:
         plus 4 fork-specific hevy_ tools that aren't gated by delete mode)."""
         async with Client(mcp) as client:
             tools = await client.list_tools()
-            assert len(tools) == 70
             names = {t.name for t in tools}
+            assert len(names) == 70
             # Spot-check tools from different modules / tiers
             assert "icu_get_recent_activities" in names
             assert "icu_get_athlete_profile" in names
@@ -48,6 +48,7 @@ class TestInMemoryTransport:
             assert "icu_get_custom_items" in names  # Custom items
             assert "icu_update_sport_settings" in names
             assert "hevy_get_recent_workouts" in names  # Fork-specific Hevy tools
+            assert "icu_apply_sport_settings" not in names  # endpoint removed upstream
 
     async def test_sport_settings_tools_expose_indoor_ftp(self):
         """Create and update schemas accept the separate indoor power threshold."""
@@ -56,7 +57,6 @@ class TestInMemoryTransport:
             for name in {"icu_create_sport_settings", "icu_update_sport_settings"}:
                 assert "indoor_ftp" in tools[name].inputSchema["properties"]
             assert "recalc_hr_zones" in tools["icu_update_sport_settings"].inputSchema["properties"]
-            assert "oldest_date" not in tools["icu_apply_sport_settings"].inputSchema["properties"]
 
     async def test_tools_use_icu_prefix(self):
         """Every tool follows the naming convention documented in the README —
@@ -114,7 +114,9 @@ class TestHTTPTransport:
     """
 
     @asynccontextmanager
-    async def _http_client(self) -> AsyncIterator[httpx.AsyncClient]:
+    async def _http_client(
+        self, *, mcp_path: str = "/mcp"
+    ) -> AsyncIterator[httpx.AsyncClient]:
         """AsyncClient bound to the MCP ASGI app with lifespan managed.
 
         FastMCP's streamable-http transport initializes its session manager in
@@ -122,13 +124,40 @@ class TestHTTPTransport:
         events on its own, so we wrap the app in asgi_lifespan.LifespanManager
         to start / stop it around each test.
         """
-        app = mcp.http_app()
+        app = mcp.http_app(path=mcp_path)
         async with LifespanManager(app) as manager:
             transport = httpx.ASGITransport(app=manager.app)
             async with httpx.AsyncClient(
                 transport=transport, base_url="http://testserver"
             ) as client:
                 yield client
+
+    async def test_health_route_is_static_json_at_root(self):
+        async with self._http_client() as client:
+            response = await client.get("/health")
+
+            assert response.status_code == 200
+            assert response.headers["content-type"].startswith("application/json")
+            assert response.json() == {"status": "ok"}
+            assert "mcp-session-id" not in response.headers
+
+            post_response = await client.post("/health", json={"unexpected": "body"})
+            assert post_response.status_code != 200
+
+    async def test_health_route_independent_of_custom_mcp_path(self):
+        async with self._http_client(mcp_path="/custom-mcp-path") as client:
+            response = await client.get("/health")
+            mcp_response = await client.post(
+                "/custom-mcp-path",
+                json={"jsonrpc": "2.0", "id": 1, "method": "initialize"},
+                headers={"Accept": "application/json"},
+            )
+
+            assert response.status_code == 200
+            assert response.headers["content-type"].startswith("application/json")
+            assert response.json() == {"status": "ok"}
+            assert "mcp-session-id" not in response.headers
+            assert mcp_response.status_code != 404
 
     @staticmethod
     def _parse_sse_response(body: str) -> dict:

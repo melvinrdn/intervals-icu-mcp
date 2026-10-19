@@ -105,7 +105,7 @@ resource takes no arguments and always reflects the configured default athlete.
 
 | Tool                     | Description                                                   |
 | ------------------------ | ------------------------------------------------------------- |
-| `icu_get_activity_streams`   | Get time-series data (power, HR, cadence, altitude, GPS)      |
+| `icu_get_activity_streams`   | Get time-series data (power, HR, cadence, altitude, GPS); `left_right_balance` is the right pedal's % |
 | `icu_get_activity_intervals` | Get structured workout intervals with targets and performance |
 | `icu_get_best_efforts`       | Find peak performances across all durations in an activity    |
 | `icu_search_intervals`       | Find similar intervals across activity history                |
@@ -123,12 +123,13 @@ The threaded notes/comments shown under an activity — the user's own training 
 | `icu_get_activity_messages`    | Read notes/comments/coach feedback on a specific activity  |
 | `icu_add_activity_message`     | Post a note or comment on a specific activity              |
 
-### Athlete (4 tools)
+### Athlete (5 tools)
 
 | Tool                  | Description                                                     |
 | --------------------- | --------------------------------------------------------------- |
-| `icu_list_athletes` | List athletes this account can access (self, followed, coached) with each one's access level — use to resolve a name to an `athlete_id` |
-| `icu_get_athlete_profile` | Get athlete profile, fitness metrics, and outdoor/indoor FTP   |
+| `icu_list_athletes` | List athletes this account can access (self, followed, coached) with each one's access level, tags, and a preview of their athlete notes (`notes_truncated: true` when cut; full text via `icu_get_athlete_profile`) — use to resolve a name to an `athlete_id` |
+| `icu_get_athlete_profile` | Get athlete profile, fitness metrics, outdoor/indoor FTP, and athlete notes |
+| `icu_update_athlete_notes` | Replace (or clear) the free-text Markdown notes on an athlete's record |
 | `icu_get_fitness_summary` | Get detailed CTL/ATL/TSB analysis with training recommendations |
 | `icu_get_fitness_chart` | Get PMC time-series (CTL/ATL/TSB) over a date window, including future projections from planned workouts |
 
@@ -189,13 +190,12 @@ The threaded notes/comments shown under an activity — the user's own training 
 | `icu_create_gear_reminder` | Create maintenance reminders for gear      |
 | `icu_update_gear_reminder` | Update existing gear maintenance reminders |
 
-### Sport Settings (5 tools)
+### Sport Settings (4 tools)
 
 | Tool                    | Description                                             |
 | ----------------------- | ------------------------------------------------------- |
 | `icu_get_sport_settings`    | Get per-sport thresholds plus configured power/HR/pace zones |
 | `icu_update_sport_settings` | Update outdoor/indoor FTP, FTHR, or pace/swim thresholds, or set explicit HR/power zone bounds (e.g. from a lab test) |
-| `icu_apply_sport_settings`  | Overwrite zones on all past activities of a sport with the current zones (no date range; for selected activities use Update zones in the web UI list view) |
 | `icu_create_sport_settings` | Create new sport-specific settings                      |
 | `icu_delete_sport_settings` | Delete sport-specific settings *(only registered when `INTERVALS_ICU_DELETE_MODE=full`; past activities keep their analysed values, but re-creating the record starts from defaults)* |
 
