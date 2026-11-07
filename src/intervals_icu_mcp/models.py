@@ -136,6 +136,9 @@ class SportSettings(BaseModel):
     pace_zones: list[float] = Field(default_factory=list[float])
     pace_zone_names: list[str] = Field(default_factory=list[str])
 
+    # Defaults for custom activity fields, keyed by field code (e.g. thresholds from a test)
+    custom_field_values: dict[str, Any] = Field(default_factory=dict[str, Any])
+
     @field_validator(
         "power_zones",
         "power_zone_names",
@@ -150,6 +153,11 @@ class SportSettings(BaseModel):
         # The API sends null (not []) for zone sets a sport doesn't use — e.g. a Run
         # record carries power_zones: null.
         return v or []
+
+    @field_validator("custom_field_values", mode="before")
+    @classmethod
+    def _coerce_custom_field_values(cls, v: Any) -> dict[str, Any]:
+        return v or {}
 
     @model_validator(mode="before")
     @classmethod
@@ -212,6 +220,21 @@ class Athlete(BaseModel):
         validation_alias=AliasChoices("sport_settings", "sportSettings"),
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _map_profile_fields(cls, data: Any) -> Any:
+        # The API sends the profile weight as `icu_weight` (`weight` is usually an explicit
+        # null) and the birth date as `icu_date_of_birth` (live-verified). AliasChoices can't
+        # express "first non-null", so map them here, keeping `weight` / `dob` as fallbacks.
+        if not isinstance(data, dict):
+            return data
+        raw = cast(dict[str, Any], data)
+        mapped = dict(raw)
+        for field, api_key in (("weight", "icu_weight"), ("dob", "icu_date_of_birth")):
+            if raw.get(api_key) is not None:
+                mapped[field] = raw[api_key]
+        return mapped
+
     @field_validator("sport_settings", mode="before")
     @classmethod
     def _coerce_sport_settings(cls, v: Any) -> list[Any]:
@@ -245,6 +268,7 @@ class ActivitySummary(BaseModel):
     distance: float | None = None
     moving_time: int | None = None
     elapsed_time: int | None = None
+    icu_recording_time: int | None = None
     total_elevation_gain: float | None = None
     average_speed: float | None = None
     average_heartrate: int | None = None
@@ -290,9 +314,14 @@ class Activity(ActivitySummary):
     compliance: float | None = None
     avg_lr_balance: float | None = None
     commute: bool | None = None
+    race: bool | None = None
+    sub_type: str | None = None
+    tags: list[str] | None = None
     trainer: bool | None = None
     indoor: bool | None = None
     analyzed: str | None = None
+    # Chat that holds the activity's notes/comments; None until the first message.
+    icu_chat_id: int | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -504,21 +533,70 @@ class Folder(BaseModel):
 # ==================== Power Curve Models ====================
 
 
+class PowerModel(BaseModel):
+    """A fitted power-duration model on a power curve (e.g. MORTON_3P, ECP)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    type: str | None = None
+    critical_power: int | float | None = Field(None, alias="criticalPower")
+    w_prime: int | float | None = Field(None, alias="wPrime")
+    p_max: int | float | None = Field(None, alias="pMax")
+    ftp: int | float | None = None
+
+
+class MapPlot(BaseModel):
+    """Maximal aerobic power (MAP) derived from a power curve."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    map: float | None = None  # W/kg
+    map_secs: int | float | None = Field(None, alias="mapSecs")
+    map_watts: int | float | None = Field(None, alias="mapWatts")
+
+
+class CurveActivity(BaseModel):
+    """Activity referenced by a curve's best efforts."""
+
+    id: str | None = None
+    name: str | None = None
+    start_date_local: str | None = None
+
+
 class CurveData(BaseModel):
     """A single curve from the API (one time range)."""
 
     model_config = ConfigDict(populate_by_name=True)
 
+    id: str | None = None
+    label: str | None = None
     secs: list[int] = Field(default_factory=lambda: list[int]())
+    # Pace curves are distance-based: metres, with `values` the seconds to cover each one
+    # and no `secs` array. Power and HR curves are duration-based and leave this empty.
+    distance: list[float] = Field(default_factory=lambda: list[float]())
     values: list[int] = Field(default_factory=lambda: list[int]())
     activity_id: list[str] = Field(default_factory=lambda: list[str]())
     watts_per_kg: list[float] = Field(default_factory=lambda: list[float]())
+    wkg_activity_id: list[str] = Field(default_factory=lambda: list[str]())
     start_date_local: str | None = None
     end_date_local: str | None = None
     days: int | None = None
     weight: float | None = None
+    power_models: list[PowerModel] = Field(
+        default_factory=lambda: list[PowerModel](), alias="powerModels"
+    )
+    map_plot: MapPlot | None = Field(None, alias="mapPlot")
+    vo2max_5m: float | None = None
 
-    @field_validator("secs", "values", "activity_id", "watts_per_kg", mode="before")
+    @field_validator(
+        "secs",
+        "values",
+        "activity_id",
+        "watts_per_kg",
+        "wkg_activity_id",
+        "power_models",
+        mode="before",
+    )
     @classmethod
     def _coerce_lists(cls, v: Any) -> list[Any]:
         return v or []
@@ -530,11 +608,17 @@ class CurveSet(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     curves: list[CurveData] = Field(default_factory=lambda: list[CurveData](), alias="list")
+    activities: dict[str, CurveActivity] = Field(default_factory=lambda: dict[str, CurveActivity]())
 
     @field_validator("curves", mode="before")
     @classmethod
     def _coerce_curves(cls, v: Any) -> list[Any]:
         return v or []
+
+    @field_validator("activities", mode="before")
+    @classmethod
+    def _coerce_activities(cls, v: Any) -> dict[str, Any]:
+        return v or {}
 
 
 # ==================== Training Plan Models ====================
@@ -592,12 +676,14 @@ class Interval(BaseModel):
 
     id: int | None = None
     type: str | None = None  # e.g., "WORK", "REST", "WARM_UP", "COOL_DOWN"
-    start: int | None = None  # Start time in seconds
-    end: int | None = None  # End time in seconds
-    duration: int | None = None  # Duration in seconds
+    start_time: int | None = None  # Seconds from the start of the activity
+    end_time: int | None = None  # Seconds from the start of the activity
+    elapsed_time: int | None = None  # Seconds, including stopped time
+    moving_time: int | None = None  # Seconds
     distance: float | None = None
+    total_elevation_gain: float | None = None  # Metres
     average_watts: int | None = None
-    normalized_power: int | None = None
+    weighted_average_watts: int | None = None  # Normalized power
     average_heartrate: int | None = None
     max_heartrate: int | None = None
     average_cadence: float | None = None

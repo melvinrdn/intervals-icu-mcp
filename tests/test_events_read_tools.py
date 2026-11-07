@@ -12,6 +12,7 @@ from httpx import Response
 from intervals_icu_mcp.tools.events import (
     get_calendar_events,
     get_event,
+    get_seasons,
     get_upcoming_workouts,
 )
 
@@ -42,7 +43,7 @@ class TestGetCalendarEvents:
                         "type": "Ride",
                         "moving_time": 3600,
                         "icu_training_load": 80,
-                        "icu_intensity": 0.85,
+                        "icu_intensity": 55.136196,
                     },
                     {
                         "id": 2,
@@ -89,6 +90,7 @@ class TestGetCalendarEvents:
         by_date = data["events_by_date"]
         today_events = by_date[_date_offset(0)]
         assert today_events[0]["relative_timing"] == "today"
+        assert today_events[0]["intensity_factor"] == 0.551
 
         past_events = by_date[_date_offset(-2)]
         assert past_events[0]["relative_timing"] == "2_days_ago"
@@ -133,7 +135,7 @@ class TestGetUpcomingWorkouts:
                         "moving_time": 3600,
                         "distance": 30000,
                         "icu_training_load": 100,
-                        "icu_intensity": 0.85,
+                        "icu_intensity": 85.0,
                         "description": "  5x5min @ FTP  ",
                     },
                     {
@@ -183,6 +185,7 @@ class TestGetUpcomingWorkouts:
         # Description is stripped
         assert workouts[1]["description"] == "5x5min @ FTP"
         assert workouts[1]["distance_meters"] == 30000
+        assert workouts[1]["intensity_factor"] == 0.85
 
     async def test_limit_truncates_after_sort(self, mock_config, respx_mock):
         respx_mock.get("/athlete/i123456/events").mock(
@@ -274,7 +277,7 @@ class TestGetEvent:
                     "moving_time": 3600,
                     "distance_target": 30000,
                     "icu_training_load": 100,
-                    "icu_intensity": 0.95,
+                    "icu_intensity": 95.0,
                     "joules": 800000,
                     "joules_above_ftp": 200000,
                     "icu_ctl": 50.5,
@@ -291,6 +294,7 @@ class TestGetEvent:
         assert data["id"] == 42
         assert data["metrics"]["distance_meters"] == 30000
         assert data["metrics"]["joules_above_ftp"] == 200000
+        assert data["metrics"]["intensity_factor"] == 0.95
         assert data["fitness_context"] == {"ctl": 50.5, "atl": 40.2}
         assert data["color"] == "#ff0000"
         assert data["external_id"] == "ext_42"
@@ -450,3 +454,64 @@ class TestEventAccessFlagsOnRead:
 
         assert data["hide_from_athlete"] is True
         assert data["athlete_cannot_edit"] is False
+
+
+class TestGetSeasons:
+    async def test_lists_seasons_with_end_dates_and_curve_ids(self, mock_config, respx_mock):
+        """Seasons end the day before the next one starts and are numbered
+        backwards from the current one; future seasons get no curve ID."""
+        route = respx_mock.get("/athlete/i123456/events").mock(
+            return_value=Response(
+                200,
+                json=[
+                    {
+                        "id": 3,
+                        "category": "SEASON_START",
+                        "name": "Next",
+                        "start_date_local": _date_offset(30) + "T00:00:00",
+                    },
+                    {
+                        "id": 1,
+                        "category": "SEASON_START",
+                        "name": "Old",
+                        "start_date_local": "2024-11-25T00:00:00",
+                    },
+                    {
+                        "id": 2,
+                        "category": "SEASON_START",
+                        "name": "Current",
+                        "start_date_local": "2025-10-06T00:00:00",
+                        "description": "Gravel season",
+                    },
+                ],
+            )
+        )
+
+        result = await get_seasons(ctx=_make_ctx(mock_config))
+
+        assert route.calls[0].request.url.params["category"] == "SEASON_START"
+        seasons = json.loads(result)["data"]["seasons"]
+        assert [s["name"] for s in seasons] == ["Old", "Current", "Next"]
+        assert seasons[0]["end_date"] == "2025-10-05"
+        assert seasons[0]["curve_id"] == "s1"
+        assert seasons[1]["curve_id"] == "s0"
+        assert seasons[1]["description"] == "Gravel season"
+        assert seasons[1]["end_date"] == _date_offset(29)
+        assert seasons[2]["upcoming"] is True
+        assert "curve_id" not in seasons[2]
+        assert seasons[2]["end_date"] is None
+
+    async def test_no_seasons(self, mock_config, respx_mock):
+        respx_mock.get("/athlete/i123456/events").mock(return_value=Response(200, json=[]))
+
+        response = json.loads(await get_seasons(ctx=_make_ctx(mock_config)))
+
+        assert response["data"]["seasons"] == []
+        assert response["metadata"]["count"] == 0
+
+    async def test_api_error(self, mock_config, respx_mock):
+        respx_mock.get("/athlete/i123456/events").mock(return_value=Response(500))
+
+        response = json.loads(await get_seasons(ctx=_make_ctx(mock_config)))
+
+        assert response["error"]["type"] == "api_error"

@@ -577,6 +577,7 @@ class ICUClient:
         athlete_id: str | None = None,
         oldest: str | None = None,
         newest: str | None = None,
+        category: str | None = None,
     ) -> list[Event]:
         """Get calendar events (planned workouts, notes, races).
 
@@ -584,6 +585,7 @@ class ICUClient:
             athlete_id: Athlete ID (uses config default if not provided)
             oldest: Oldest date to fetch (ISO-8601 format)
             newest: Newest date to fetch (ISO-8601 format)
+            category: Comma-separated categories to filter for (e.g. "SEASON_START")
 
         Returns:
             List of Event objects
@@ -595,6 +597,8 @@ class ICUClient:
             params["oldest"] = oldest
         if newest:
             params["newest"] = newest
+        if category:
+            params["category"] = category
 
         response = await self._request("GET", f"/athlete/{athlete_id}/events", params=params)
         adapter = TypeAdapter(list[Event])
@@ -805,6 +809,40 @@ class ICUClient:
         )
         adapter = TypeAdapter(list[ActivityStream])
         return adapter.validate_python(response.json())
+
+    async def get_interval_stats(
+        self, activity_id: str, start_index: int, end_index: int
+    ) -> dict[str, Any]:
+        """Get interval-style stats computed by Intervals.icu for a sample range.
+
+        Args:
+            activity_id: Activity ID
+            start_index: First stream sample index (inclusive)
+            end_index: Last stream sample index (exclusive; may equal the stream length)
+
+        Returns:
+            Interval object as a dict (averages, NP, decoupling, respiration, ...)
+        """
+        response = await self._request(
+            "GET",
+            f"/activity/{activity_id}/interval-stats",
+            params={"start_index": start_index, "end_index": end_index},
+        )
+        result: dict[str, Any] = response.json()
+        return result
+
+    async def get_power_vs_hr(self, activity_id: str) -> dict[str, Any]:
+        """Get the Intervals.icu power-vs-heart-rate (Pw:HR decoupling) analysis.
+
+        Args:
+            activity_id: Activity ID
+
+        Returns:
+            PowerVsHRPlot as a dict (hrLag, powerHr halves, decoupling, buckets)
+        """
+        response = await self._request("GET", f"/activity/{activity_id}/power-vs-hr.json")
+        result: dict[str, Any] = response.json()
+        return result
 
     async def update_activity_streams(
         self,
@@ -1441,6 +1479,35 @@ class ICUClient:
         )
         result: dict[str, Any] = response.json()
         return result
+
+    async def update_message(self, chat_id: int, message_id: int, content: str) -> bool:
+        """Replace the content of a chat message (activity notes live in a chat).
+
+        Args:
+            chat_id: Chat ID (an activity's chat is ``Activity.icu_chat_id``)
+            message_id: Message ID
+            content: New message content
+
+        Returns:
+            True if the update was successful
+        """
+        await self._request(
+            "PUT", f"/chats/{chat_id}/messages/{message_id}", json={"content": content}
+        )
+        return True
+
+    async def delete_message(self, chat_id: int, message_id: int) -> bool:
+        """Delete a chat message (activity notes live in a chat).
+
+        Args:
+            chat_id: Chat ID (an activity's chat is ``Activity.icu_chat_id``)
+            message_id: Message ID
+
+        Returns:
+            True if deletion was successful
+        """
+        await self._request("DELETE", f"/chats/{chat_id}/messages/{message_id}")
+        return True
 
     # ==================== Custom Items Endpoints ====================
 
