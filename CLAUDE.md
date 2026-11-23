@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code when working with this repository.
 
+> **Project status: retired.** v5.10.0 is the final release; no new features are planned. The release and automation sections below are kept for history.
+
 ## Project Overview
 
 MCP (Model Context Protocol) server for Intervals.icu — provides up to 77 tools (73 Intervals.icu + 4 fork-specific Hevy), 4 resources, and 9 prompts for accessing training data, wellness metrics, and performance analysis through Claude and other LLMs. The default `INTERVALS_ICU_DELETE_MODE=safe` registers 74 tools; `full` registers all 77, `none` registers 68 (the 4 Hevy tools register in every mode).
@@ -125,7 +127,7 @@ Version bump, highest wins across everything merged since the last tag (`.github
 
 To cut a release, use `/release-write`. It previews the bump, dispatches the workflow, writes the notes into the draft, and hands the draft over. The two steps:
 1. **Dispatch** — Actions → Publish Release → Run workflow on `main` (or `gh workflow run publish.yml --ref main`, optionally `-f version=X.Y.Z`). `publish.yml` fails fast in `preflight` (requires `main`, checks the `server.json` description length, computes the version), runs the test suite, then `draft-release` creates a **draft** Release `vX.Y.Z` pinned to the tested commit, with generated PR-title notes as a placeholder. It refuses if a draft already exists. No tag, nothing published.
-2. **Publish** — the maintainer edits the notes (user-facing, 5.8.0 CHANGELOG style: follow-up PRs folded in, chores left out, contributors credited) and publishes the draft. That creates the tag and fires `release: published`, which runs `pypi` and `mcp-registry`. It must be a person's publish (UI or `gh release edit --draft=false` under the maintainer's login); a `GITHUB_TOKEN` publish triggers nothing. Never publish a draft without the maintainer's explicit go-ahead.
+2. **Publish** — the maintainer edits the notes (user-facing, 5.8.0 CHANGELOG style: follow-up PRs folded in, chores left out, contributors credited) and publishes the draft. That creates the tag and fires `release: published`, which runs `pypi` and `mcp-registry`, then `verify` (polls both for the version and smoke-tests a clean install). It must be a person's publish (UI or `gh release edit --draft=false` under the maintainer's login); a `GITHUB_TOKEN` publish triggers nothing. Never publish a draft without the maintainer's explicit go-ahead.
 
 Other release automation:
 - Package version comes from the git tag via `hatch-vcs` (no `pyproject.toml` bump needed, no release commit)
@@ -146,7 +148,7 @@ Running list of deferred breaking cleanups (do together in the next major; keep 
 
 - `.env` — Local credentials (not in git)
 - `.env.example` — Template for credentials
-- `openapi-spec.json` — Intervals.icu API specification. Kept up to date automatically via `.github/workflows/update-openapi.yml` (or run `curl -s https://intervals.icu/api/v1/docs > openapi-spec.json` to update locally).
+- `openapi-spec.json` — Intervals.icu API specification, frozen (no longer refreshed automatically). To update it manually: `curl -s https://intervals.icu/api/v1/docs > openapi-spec.json`
 - `uv.lock` — Locked dependencies (commit this)
 - `.github/workflows/test.yml` — CI tests
 - `.github/workflows/release.yml` — Docker release automation
