@@ -9,6 +9,9 @@ on:
       - pyproject.toml
       - Makefile
       - .github/workflows/audit.yml
+  # Fork: upstream dropped the weekly run when it retired; kept here to catch new advisories
+  schedule:
+    - cron: '17 5 * * 1'
   workflow_dispatch:
 
 permissions:
